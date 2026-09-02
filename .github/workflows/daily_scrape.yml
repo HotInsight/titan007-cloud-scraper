@@ -1,0 +1,80 @@
+name: Titan007 Daily Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      send_email:
+        description: "发送结果邮件"
+        required: true
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 11 * * *"
+      timezone: "Asia/Bangkok"
+
+permissions:
+  contents: read
+
+jobs:
+  scrape-and-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: Scrape and create Excel
+        id: scrape
+        run: python titan007_scraper.py --output-dir output --log-dir logs
+
+      - name: Locate Excel file
+        if: success()
+        run: echo "EXCEL_FILE=$(find output -maxdepth 1 -name '*.xlsx' -type f | head -n 1)" >> "$GITHUB_ENV"
+
+      - name: Email Excel through Gmail
+        if: success() && (github.event_name == 'schedule' || inputs.send_email == true)
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python send_email.py --file "$EXCEL_FILE"
+
+      - name: Save Excel as workflow artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan007-excel-${{ github.run_number }}
+          path: output/*.xlsx
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Email failure notice
+        if: failure()
+        continue-on-error: true
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python send_email.py --failure-log logs/scraper.log
+
+      - name: Save failure logs and diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan007-failure-${{ github.run_number }}
+          path: logs/
+          retention-days: 30
+          if-no-files-found: warn
