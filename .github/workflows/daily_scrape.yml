@@ -8,9 +8,7 @@ on:
         required: true
         type: boolean
         default: true
-  schedule:
-    - cron: "03 11 * * *"
-      timezone: "Asia/Bangkok"
+
    
 permissions:
   contents: read
