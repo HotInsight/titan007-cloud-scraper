@@ -12,7 +12,7 @@ on:
     - cron: "21 11 * * *"
       timezone: "Asia/Bangkok"
       
-    # 临时测试：每15分钟触发一次
+    # 临时测试：每5分钟触发一次
     - cron: "*/5 * * * *"
 
 permissions:
