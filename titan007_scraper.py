@@ -179,8 +179,10 @@ def main():
     parser = argparse.ArgumentParser(description="抓取8波北单十列数据")
     parser.add_argument("--show-browser", action="store_true")
     parser.add_argument("--output-dir", default=str(ROOT / "output"))
+    parser.add_argument("--log-dir", type=Path, default=ROOT, help="日志目录")
     args = parser.parse_args()
-    log = ROOT / "scraper.log"
+    args.log_dir.mkdir(parents=True, exist_ok=True)
+    log = args.log_dir / "scraper.log"
     logging.basicConfig(filename=log, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", encoding="utf-8")
     try:
         rows = scrape(not args.show_browser)
